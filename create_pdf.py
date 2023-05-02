@@ -83,29 +83,38 @@ def get_files_and_filesizes(filenames):
         files_df = files_df.append({"filename":file, "size":size,"timestamp":timestamp})
     return files_df
 
+def make_datelist() -> list():
+    today = datetime.now().date()
+    datelist = [today - timedelta(days=x) for x in range(31)]
+    datelist.sort()
+    return datelist
+
+def make_timelist() -> list():
+    today = datetime.now().date()
+    midnight = datetime.min.time()
+    todaymidnight = datetime.combine(today, midnight)
+    timelist = [(todaymidnight + timedelta(minutes=x)).time() for x in range(0,1440,30)]
+    return timelist
+
 def make_file_df(filenames):
-    datelist = []
-    timelist = []
-    timestamplist:List[datetime] = []
-    for file in filenames:
-        timestamplist.append(parse_timestamp(file))
-    for timestamp in timestamplist:
-        if str(timestamp.date()) not in datelist:
-            datelist.append(str(timestamp.date()))
-        if str(timestamp.time()) not in timelist:
-            timelist.append(str(timestamp.time()))
-    
+    datelist = make_datelist()
+    timelist = make_timelist()
+
     df = pd.DataFrame(columns=datelist, index=timelist)
     
     for file in filenames:
         size = int(os.path.getsize(file))/1000
-        date = str(parse_timestamp(file).date())
-        time = str(parse_timestamp(file).time())
+        date = parse_timestamp(file).date()
+        time = parse_timestamp(file).time()
+        if time not in df.index:
+            times = df.index.tolist()
+            times.append(time)
+            times = times.sort()
+            df = df.reindex(times)
         df[date][time] = size
+
     df = df.astype("float")
     for index in df.index:
         if not str(index).endswith(":00"):
             df = df.drop(index, axis=0)
     return df
-
-
